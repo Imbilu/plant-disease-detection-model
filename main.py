@@ -22,7 +22,7 @@ def load_models():
         #     raise FileNotFoundError(f"File not found: {model_path}. Please ensure the file is in the correct location.")
         
         disease_model = tf.keras.models.load_model('plant_disease_model.keras')
-        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+        tokenizer = AutoTokenizer.from_pretrained(model_name, token=access_token)
         chatbot_model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
