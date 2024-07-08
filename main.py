@@ -12,7 +12,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 access_token = "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"
 # Load the model and tokenizer
-model_name = "mistralai/Mistral-7B-v0.1"
+model_name = "chargoddard/Yi-34B-Llama"
 
 @st.cache_resource
 def load_models():
@@ -22,7 +22,7 @@ def load_models():
         #     raise FileNotFoundError(f"File not found: {model_path}. Please ensure the file is in the correct location.")
         
         disease_model = tf.keras.models.load_model('plant_disease_model.keras')
-        tokenizer = AutoTokenizer.from_pretrained(model_name, token=access_token)
+        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
         chatbot_model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
