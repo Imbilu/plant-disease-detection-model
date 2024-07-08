@@ -18,8 +18,7 @@ def load_models():
         disease_model = tf.keras.models.load_model('plant_disease_model.keras')
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         chatbot_model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype=torch.float16,
+            model_name
         )
         return disease_model, tokenizer, chatbot_model
     except Exception as e:
