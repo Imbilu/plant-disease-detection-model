@@ -7,7 +7,7 @@ import torch
 from streamlit_chat import message
 
 
-# torch.set_default_device("cuda")
+torch.set_default_device("cuda")
 
 # Load the model and tokenizer
 model_name = "facebook/blenderbot-400M-distill"
@@ -20,7 +20,6 @@ def load_models():
         chatbot_model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.float16,
-            device_map="auto",
         )
         return disease_model, tokenizer, chatbot_model
     except Exception as e:
