@@ -15,11 +15,11 @@ model_name = "facebook/blenderbot-400M-distill"
 @st.cache_resource
 def load_models():
     try:
-        model_path = 'plant_disease_model.keras'
+        # model_path = 'plant_disease_model.keras'
         # if not os.path.exists(model_path):
         #     raise FileNotFoundError(f"File not found: {model_path}. Please ensure the file is in the correct location.")
         
-        disease_model = tf.keras.models.load_model(model_path)
+        disease_model = tf.keras.models.load_model('plant_disease_model.keras')
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         chatbot_model = AutoModelForCausalLM.from_pretrained(
             model_name,
