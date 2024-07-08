@@ -9,8 +9,10 @@ import os
 # Check if a GPU is available and set the device accordingly
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
+access_token = "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"
 # Load the model and tokenizer
-model_name = "facebook/blenderbot-400M-distill"
+model_name = "mistralai/Mistral-7B-v0.1"
 
 @st.cache_resource
 def load_models():
@@ -20,7 +22,7 @@ def load_models():
         #     raise FileNotFoundError(f"File not found: {model_path}. Please ensure the file is in the correct location.")
         
         disease_model = tf.keras.models.load_model('plant_disease_model.keras')
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        tokenizer = AutoTokenizer.from_pretrained(model_name, token=access_token)
         chatbot_model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
