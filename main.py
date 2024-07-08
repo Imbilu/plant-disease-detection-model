@@ -4,6 +4,7 @@ import tensorflow as tf
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 from streamlit_chat import message
+import accelerate 
 
 torch.set_default_device("cuda")
 
