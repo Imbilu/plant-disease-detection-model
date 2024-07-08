@@ -1,12 +1,12 @@
-import accelerate 
 import streamlit as st
 import numpy as np
 import tensorflow as tf
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 from streamlit_chat import message
+import os
 
-
+# Check if a GPU is available and set the device accordingly
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Load the model and tokenizer
@@ -15,11 +15,17 @@ model_name = "facebook/blenderbot-400M-distill"
 @st.cache_resource
 def load_models():
     try:
-        disease_model = tf.keras.models.load_model('plant_disease_model.keras')
+        model_path = 'plant_disease_model.keras'
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"File not found: {model_path}. Please ensure the file is in the correct location.")
+        
+        disease_model = tf.keras.models.load_model(model_path)
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         chatbot_model = AutoModelForCausalLM.from_pretrained(
-            model_name
-        )
+            model_name,
+            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+            device_map="auto" if torch.cuda.is_available() else None,
+        ).to(device)
         return disease_model, tokenizer, chatbot_model
     except Exception as e:
         st.error(f"Error loading models: {e}")
@@ -78,11 +84,11 @@ def initialize_chatbot():
         submit_button = st.form_submit_button(label='Send')
 
         if submit_button and user_input:
-            new_user_input_ids = tokenizer.encode(user_input + tokenizer.eos_token, return_tensors='pt')
+            new_user_input_ids = tokenizer.encode(user_input + tokenizer.eos_token, return_tensors='pt').to(device)
             st.session_state['past'].append(new_user_input_ids[0].tolist())
 
-            bot_input_ids = torch.cat([torch.tensor([st.session_state['past'][0]], dtype=torch.long, device='cuda'), new_user_input_ids], dim=-1)
-            attention_mask = torch.ones_like(bot_input_ids, dtype=torch.long, device='cuda')
+            bot_input_ids = torch.cat([torch.tensor([st.session_state['past'][0]], dtype=torch.long, device=device), new_user_input_ids], dim=-1)
+            attention_mask = torch.ones_like(bot_input_ids, dtype=torch.long, device=device)
 
             chatbot_model.eval()
             with torch.no_grad():
