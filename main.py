@@ -12,7 +12,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 access_token = "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"
 # Load the model and tokenizer
-model_name = "CohereForAI/c4ai-command-r-plus"
+model_name = "microsoft/Phi-3-mini-4k-instruct"
 
 @st.cache_resource
 def load_models():
@@ -22,12 +22,12 @@ def load_models():
         #     raise FileNotFoundError(f"File not found: {model_path}. Please ensure the file is in the correct location.")
         
         disease_model = tf.keras.models.load_model('plant_disease_model.keras')
-        tokenizer = AutoTokenizer.from_pretrained(model_name, token=access_token)
+        tokenizer = AutoTokenizer.from_pretrained(model_name,  trust_remote_code=True)
         chatbot_model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
             device_map="auto" if torch.cuda.is_available() else None,
-            token=access_token
+            trust_remote_code=True
         ).to(device)
         return disease_model, tokenizer, chatbot_model
     except Exception as e:
