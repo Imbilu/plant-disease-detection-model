@@ -7,7 +7,7 @@ import torch
 from streamlit_chat import message
 
 
-# torch.set_default_device("cuda")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Load the model and tokenizer
 model_name = "facebook/blenderbot-400M-distill"
