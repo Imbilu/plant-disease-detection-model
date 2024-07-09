@@ -10,7 +10,7 @@ import os
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-access_token = "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"
+
 # Load the model and tokenizer
 model_name = "microsoft/DialoGPT-medium"
 
