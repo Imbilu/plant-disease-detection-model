@@ -1,7 +1,7 @@
 import streamlit as st
 import numpy as np
 import tensorflow as tf
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import torch
 from streamlit_chat import message
 import os
@@ -9,31 +9,23 @@ import os
 # Check if a GPU is available and set the device accordingly
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
-
 # Load the model and tokenizer
-model_name = "microsoft/DialoGPT-medium"
+model_name = "EleutherAI/gpt-neo-1.3B"
 
 @st.cache_resource
-def load_models():
+def load_disease_model():
     try:
-        # model_path = 'plant_disease_model.keras'
-        # if not os.path.exists(model_path):
-        #     raise FileNotFoundError(f"File not found: {model_path}. Please ensure the file is in the correct location.")
+        model_path = 'plant_disease_model.keras'
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"File not found: {model_path}. Please ensure the file is in the correct location.")
         
-        disease_model = tf.keras.models.load_model('plant_disease_model.keras')
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        chatbot_model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-            device_map="auto" if torch.cuda.is_available() else None,
-        ).to(device)
-        return disease_model, tokenizer, chatbot_model
+        disease_model = tf.keras.models.load_model(model_path)
+        return disease_model
     except Exception as e:
-        st.error(f"Error loading models: {e}")
-        return None, None, None
+        st.error(f"Error loading disease model: {e}")
+        return None
 
-disease_model, tokenizer, chatbot_model = load_models()
+disease_model = load_disease_model()
 
 class_names = [
     'Apple___Apple_scab', 'Apple___Black_rot', 'Apple___Cedar_apple_rust',
@@ -69,6 +61,15 @@ def model_prediction(image):
         st.error(f"Error in prediction: {e}")
         return None
 
+@st.cache_resource
+def load_chatbot_model():
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name)
+    return tokenizer, model
+
+tokenizer, chatbot_model = load_chatbot_model()
+generator = pipeline("text-generation", model=chatbot_model, tokenizer=tokenizer)
+
 def initialize_chatbot():
     if "generated" not in st.session_state:
         st.session_state["generated"] = []
@@ -79,36 +80,22 @@ def initialize_chatbot():
         for i in range(len(st.session_state['generated'])):
             message(st.session_state['generated'][i], key=str(i))
             if i < len(st.session_state['past']):
-                message(tokenizer.decode(st.session_state['past'][i]), is_user=True, key=str(i) + '_user')
+                message(st.session_state['past'][i], is_user=True, key=str(i) + '_user')
 
     with st.form(key='chat_form', clear_on_submit=True):
         user_input = st.text_input("You: ")
         submit_button = st.form_submit_button(label='Send')
 
         if submit_button and user_input:
-            new_user_input_ids = tokenizer.encode(user_input + tokenizer.eos_token, return_tensors='pt').to(device)
-            st.session_state['past'].append(new_user_input_ids[0].tolist())
-
-            bot_input_ids = torch.cat([torch.tensor([st.session_state['past'][0]], dtype=torch.long, device=device), new_user_input_ids], dim=-1)
-            attention_mask = torch.ones_like(bot_input_ids, dtype=torch.long, device=device)
-
-            chatbot_model.eval()
-            with torch.no_grad():
-                chat_history_ids = chatbot_model.generate(
-                    bot_input_ids, attention_mask=attention_mask, max_length=1000, pad_token_id=tokenizer.eos_token_id
-                )
-            response = tokenizer.decode(chat_history_ids[:, bot_input_ids.shape[-1]:][0], skip_special_tokens=True)
-
-            if "divorce" in response.lower():
-                st.error("The chatbot generated an irrelevant response. Please try again.")
-            else:
-                st.session_state['generated'].append(response)
-                message(response)
-                message(user_input, is_user=True)
+            st.session_state['past'].append(user_input)
+            response = generator(user_input, max_length=1000)[0]['generated_text']
+            st.session_state['generated'].append(response)
+            message(response)
+            message(user_input, is_user=True)
 
 def main():
     st.sidebar.title("Dashboard")
-    app_mode = st.sidebar.selectbox("Select Page", ["Home", "About", "Disease Prediction", "Chatbot"])
+    app_mode = st.sidebar.selectbox("Select Page", ["Home", "About", "Disease Prediction", "Predict & Chat", "Chatbot"])
 
     if app_mode == "Home":
         st.header("Plant Disease Detection")
@@ -148,8 +135,53 @@ def main():
                     st.error("Failed to get a prediction. Please try again.")
             else:
                 st.warning("Please upload an image to get a prediction.")
-        else:
-            initialize_chatbot()
+
+    elif app_mode == "Predict & Chat":
+        st.header("Prediction and Chat")
+
+        image = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
+        if image:
+            st.image(image, use_column_width=True, caption="Uploaded Image")
+
+            if st.button("Predict"):
+                res_idx = model_prediction(image)
+                if res_idx is not None:
+                    plant, *disease = class_names[res_idx].split("___")
+                    prediction_message = f"**Model Prediction**  \nPlant: {plant}  \nLeaf Condition: {' '.join(disease)}"
+                    st.success(prediction_message)
+
+                    if "generated" not in st.session_state:
+                        st.session_state["generated"] = []
+                    if "past" not in st.session_state:
+                        st.session_state["past"] = []
+
+                    formatted_prediction = f"The plant is a {plant} and its leaves have {' '.join(disease)}. What should I do?"
+
+                    if not st.session_state['past']:
+                        st.session_state['past'].append(formatted_prediction)
+                        initial_response = generator(formatted_prediction, max_length=1000)[0]['generated_text']
+                        st.session_state['generated'].append(initial_response)
+
+                    with st.expander("Chat History", expanded=True):
+                        for i in range(len(st.session_state['generated'])):
+                            message(st.session_state['generated'][i], key=str(i))
+                            message(st.session_state['past'][i], is_user=True, key=str(i) + '_user')
+
+                    with st.form(key='chat_form', clear_on_submit=True):
+                        user_input = st.text_input("You: ")
+                        submit_button = st.form_submit_button(label='Send')
+
+                        if submit_button and user_input:
+                            st.session_state['past'].append(user_input)
+                            response = generator(user_input, max_length=1000)[0]['generated_text']
+                            st.session_state['generated'].append(response)
+                            message(response)
+                            message(user_input, is_user=True)
+
+                else:
+                    st.error("Failed to get a prediction. Please try again.")
+            else:
+                st.warning("Please upload an image to get a prediction.")
 
     elif app_mode == "Chatbot":
         st.header("Chat with Plant Disease Expert")
