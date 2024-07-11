@@ -156,6 +156,8 @@ def main():
                         st.session_state["past"] = []
 
                     formatted_prediction = f"The plant is a {plant} and its leaves have {' '.join(disease)}. What should I do?"
+                    init_res = generator(formatted_prediction, max_length=1000)[0]['generated_text']
+                    st.write(init_res)
 
                     if not st.session_state['past']:
                         st.session_state['past'].append(formatted_prediction)
