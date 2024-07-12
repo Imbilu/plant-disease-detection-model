@@ -204,7 +204,7 @@ if uploaded_file:
     if st.button("Predict"):
         # Send the image to the backend for prediction
         files = {'file': uploaded_file.getvalue()}
-        response = requests.post('http://<your-ngrok-url>/predict', files=files)
+        response = requests.post('https://1eba-34-141-252-88.ngrok-free.app/predict', files=files)
         prediction = response.json()
         st.success(f"Prediction: {prediction['result']}")
         st.write(prediction['description'])
@@ -216,5 +216,5 @@ with st.form(key='chat_form', clear_on_submit=True):
     submit_button = st.form_submit_button(label='Send')
 
     if submit_button and user_input:
-        response = requests.post('http://<your-ngrok-url>/chat', json={'message': user_input})
+        response = requests.post('https://1eba-34-141-252-88.ngrok-free.app/chat', json={'message': user_input})
         st.write(f"Expert: {response.json()['reply']}")
